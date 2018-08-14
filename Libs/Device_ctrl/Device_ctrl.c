@@ -47,8 +47,10 @@ EXT_FLASH_image_t DC_fw_image; //Image descriptor
 uint32_t DC_nextPeriod; //Period for sleep
 uint8_t sleepMode = 0; //Sleep flag mode
 
+#ifdef EN_BLUETOOTH
 uint8_t DC_BT_connCount; //Count BT connections
 DC_BT_Status_t DC_BT_Status[DC_BT_CONN_MAX]; //Bluetooth status
+#endif
 
 //System parametrs
 DC_settings_t DC_settings;//Settings
@@ -61,6 +63,7 @@ volatile DC_status_t DC_status; //Dev status
 const double DC_Power_const = 0.000000043741862;
 
 //--------------------------------------------------------------------------------------------------
+//Debug Uart send
 void LEUART1_sendBuffer(char* txBuffer, int bytesToSend)
 {
   LEUART_TypeDef *uart = LEUART1;
@@ -83,17 +86,6 @@ void LEUART1_sendBuffer(char* txBuffer, int bytesToSend)
       uart->TXDATA = 0;
     }
   }
-//  
-//  uint16_t try_counter = 1000;
-//  /*Waiting for transmission of last byte */
-//  while (try_counter--)
-//  {
-//    if (uart->STATUS & LEUART_STATUS_TXC)
-//      break;
-//    
-//    _delay_timer_ms(5);
-//  }
-//  
 }
 //--------------------------------------------------------------------------------------------------
 //Out debug data
@@ -109,18 +101,25 @@ void DC_debugOut(char *str, ...)
   vsprintf(strBuffer, str, args);
   va_end(args);
   
+#ifdef EN_DBG_IO_OUT
   if (DBG_Connected())
   {
     printf(strBuffer);
   }
-
-  LEUART1_sendBuffer(strBuffer, strlen(strBuffer));
+#endif
   va_end(args);
+
+#ifdef EN_DBG_UART_OUT
+  LEUART1_sendBuffer(strBuffer, strlen(strBuffer));
+#endif
   
+#ifdef EN_DBG_USB_OUT  
   if (CDC_Configured)
   {
     USB_send_str(str);
   }
+#endif
+  
 }
 //--------------------------------------------------------------------------------------------------
 //Get power
@@ -169,9 +168,8 @@ void DC_init()
   DC_read_settings();   //Read settings
   DC_read_params();     //Read params
   DC_read_FW();         //Read FW inf
-  DC_fw_image.imageCRC = 0;
  
-#ifdef SW_RING_IRQ
+#ifdef EN_RING_IRQ
   
   //Ring IRQ
   GPIO_IntEnable(1 << RING_PIN);
@@ -179,7 +177,7 @@ void DC_init()
   
 #endif
   
-#ifdef SW_ACC_IRQ
+#ifdef EN_ACC
   
   //ACC IRQ settings
   GPIO_IntEnable((1 << MMA_INT1_PIN)|(1 << MMA_INT2_PIN));
@@ -191,6 +189,11 @@ void DC_init()
   
   NVIC_ClearPendingIRQ(GPIO_ODD_IRQn);
   NVIC_EnableIRQ(GPIO_ODD_IRQn);
+  
+  uint8_t acel_level = (uint8_t)DC_settings.acel_level_int*127/SCALE_8G; //Convert to threshold
+    
+  if (I2C_gate_MMA8452Q_init(SCALE_8G, ODR_800, acel_level))
+    DC_debugOut("ACC init OK\r\n");
   
 #endif
   
@@ -218,7 +221,7 @@ uint8_t DC_get_GSM_VDD_sense() {
 }
 //--------------------------------------------------------------------------------------------------
 //Get chip temper
-float DC_get_chip_temper() {   
+float DC_get_chip_temper() {
   uint16_t adcSample = ADC_getValue(ADC_TEMP_CH);
   return ADC_Celsius(adcSample);
 }
@@ -240,8 +243,8 @@ float DC_get_bat_current() {
 //RTC init
 void DC_RTC_init()
 {  
-  RTC_CompareSet(0, 10);
-  RTC_CompareSet(1, 1);
+  RTC_CompareSet(0, 10);        //Sleep timer
+  RTC_CompareSet(1, 1);         //sec RTC
   
   NVIC_EnableIRQ(RTC_IRQn);
   
@@ -264,7 +267,7 @@ void DC_set_RTC_timer_s(uint32_t sec)
   RTC_IntClear(RTC_IFC_COMP0);
   RTC_IntDisable(RTC_IEN_COMP1);
   RTC_IntEnable(RTC_IEN_COMP0);
-
+  
   RTC_CounterReset();
 }
 //**************************************************************************************************
@@ -299,6 +302,8 @@ void DC_read_params()
 //Set default settings
 void DC_set_default_settings()
 {  
+  memset((void*)&DC_settings, 0, sizeof(DC_settings_t));
+   
   //Try settings
   DC_settings.gnss_try_count = DC_SET_GNSS_TRY_COUNT;
   DC_settings.collect_try_sleep = DC_SET_COLLECT_TRY_SLEEP;
@@ -316,10 +321,10 @@ void DC_set_default_settings()
   DC_settings.sendMode_try_count = DC_SET_SEND_MODE_TRY;
   
   //IP addresses
-  memcpy((void*)DC_settings.ip_dataList[0], DC_SET_DATA_IP1, sizeof(DC_settings.ip_dataList));
-  memcpy((void*)DC_settings.ip_dataList[1], DC_SET_DATA_IP2, sizeof(DC_settings.ip_dataList));
-  memcpy((void*)DC_settings.ip_serviceList[0], DC_SET_SERVICE_IP1, sizeof(DC_settings.ip_serviceList));
-  memcpy((void*)DC_settings.ip_serviceList[1], DC_SET_SERVICE_IP2, sizeof(DC_settings.ip_serviceList));
+  memcpy((void*)DC_settings.ip_dataList[0], DC_SET_DATA_IP1, strlen(DC_SET_DATA_IP1));
+  memcpy((void*)DC_settings.ip_dataList[1], DC_SET_DATA_IP2, strlen(DC_SET_DATA_IP2));
+  memcpy((void*)DC_settings.ip_serviceList[0], DC_SET_SERVICE_IP1, strlen(DC_SET_SERVICE_IP1));
+  memcpy((void*)DC_settings.ip_serviceList[1], DC_SET_SERVICE_IP2, strlen(DC_SET_SERVICE_IP1));
   
   DC_settings.servicePort = DC_SET_SERVICE_PORT;
   DC_settings.ip_serviceListLen = DC_SET_SERVICE_IP_LEN;
@@ -345,7 +350,7 @@ void DC_save_settings()
   DC_settings.magic_key = DC_SETTINGS_MAGIC_CODE;
   EXT_Flash_erace_sector(EXT_FLASH_SETTINGS);
   
-  EXT_Flash_writeData((EXT_FLASH_SETTINGS),(uint8_t*)&DC_settings, sizeof(DC_settings)); 
+  EXT_Flash_writeData(EXT_FLASH_SETTINGS,(uint8_t*)&DC_settings, sizeof(DC_settings)); 
   DC_debugOut("Save settings\r\n");
 }
 //--------------------------------------------------------------------------------------------------
@@ -354,7 +359,7 @@ void DC_read_settings()
 { 
   EXT_Flash_readData(EXT_FLASH_SETTINGS,(uint8_t*)&DC_settings,sizeof(DC_settings));
   
-  if (DC_settings.magic_key == DC_PARAMS_MAGIC_CODE)
+  if (DC_settings.magic_key == DC_SETTINGS_MAGIC_CODE)
   {
     DC_debugOut("Read settings OK\r\n");
   }else{
@@ -377,7 +382,7 @@ DC_return_t DC_addDataLog(DC_dataLog_t dataLog)
     EXT_Flash_erace_sector(EXT_FLASH_LOG_DATA);   
   }
     
-  dataLog.valid_key = DC_VALID_MAGIC_CODE;
+  dataLog.valid_key = DC_LOG_VALID_MAGIC_CODE;
   EXT_Flash_writeData(addresEndLog, (uint8_t*)&dataLog, logSize);
   
   DC_params.dataLog_len++;
@@ -391,7 +396,7 @@ DC_return_t DC_addDataLog(DC_dataLog_t dataLog)
 DC_return_t DC_checkLogData(DC_dataLog_t *log_data)
 {
   //Check magic key
-  if (log_data->valid_key != DC_VALID_MAGIC_CODE)
+  if (log_data->valid_key != DC_LOG_VALID_MAGIC_CODE)
     return DC_ERROR;
   
   //Check data time
@@ -665,12 +670,15 @@ void DC_startTimer(TimerHandle_t DC_Timer_hp, char *pcTimerName, TickType_t Peri
 //Sample timer
 void vDC_Timer_sample( TimerHandle_t xTimer )
 {
+  //Power collect
   if( xSemaphoreTake( ADC_mutex, portMAX_DELAY ) == pdTRUE )
   {
     DC_params.power += ADC_getValue(ADC_CURRENT);
     xSemaphoreGive( ADC_mutex );
   }
   
+  
+  //USB ptotocol
   if (USB_state == USB_STATE_MSG_PROCESS)
   {
     USB_msg_process();
@@ -691,6 +699,7 @@ void vDC_Timer_monitor( TimerHandle_t xTimer )
   float sumVoltage;
   float voltage;
   
+  //Voltage control
   if( xSemaphoreTake( ADC_mutex, portMAX_DELAY ) == pdTRUE )
   {
     for (int i = 0; i<10; i++)
@@ -700,7 +709,7 @@ void vDC_Timer_monitor( TimerHandle_t xTimer )
     xSemaphoreGive( ADC_mutex );
     voltage = (sumVoltage/10);
     
-    if (voltage <= 2.1)
+    if (voltage <= DC_CRITICAL_VOLTAGE)
     {
       SWITCH_OFF_GSM;
       SWITCH_OFF_GNSS;

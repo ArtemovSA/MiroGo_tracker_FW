@@ -28,7 +28,7 @@
 //Libs
 #include "Device_ctrl.h"
 #include "Delay.h"
-#include "MC60_lib.h"
+#include "Modem.h"
 #include "GNSS.h"
 #include "wialon_ips2.h"
 #include "ADC.h"
@@ -36,39 +36,17 @@
 #include "Date_time.h"
 #include "Device_ctrl.h"
 #include "Clock.h"
-#include "cdc.h"
-
-//IDLE command
-#define CONTINUE_CMD    0
-#define SWITCH_CMD      1
-
-//Cell coordinates
-float gCell_lat;
-float gCell_lon;
 
 //RTOS variables
 extern xSemaphoreHandle ADC_mutex;
 QueueHandle_t Tracker_con_Queue;
 TaskHandle_t xHandle_Tracker;
 
-USBReceiveHandler USB_Handler;
-
 //Counters
 uint8_t tryCounter_AGPS;
 uint8_t tryCounter_CollectData;
 uint8_t tryCounter_SendData;
 uint8_t tryCounter_ACC_EVENT;
-
-//Current modem params
-char current_ip[16];
-char current_IMEI[17];
-
-//Cell coordinates
-float gCell_lat;
-float gCell_lon;
-
-//GNSS coordinates
-GNSS_data_t globalGNSS_data;
 
 //Times in sec from UTC 
 time_t UTC_collect_time_next;   //Next time for GNSS
@@ -77,7 +55,7 @@ time_t UTC_AGPS_time_next;      //Next time for synch AGPS
 
 //--------------------------------------------------------------------------------------------------
 //Calc wake up
-time_t Tracker_cal_wakeUpTime(time_t wake_up_before, uint32_t period)
+time_t Tracker_calc_wakeUpTime(time_t wake_up_before, uint32_t period)
 {
   int32_t delta = (wake_up_before - globalUTC_time);
   time_t time_return;
@@ -111,6 +89,7 @@ DC_return_t Tracker_sleep_sec(uint32_t sleep_period)
     case DC_MODE_COLLECT_DATA: DC_debugOut("Next Function: DC_MODE_COLLECT_DATA\r\n"); break;
     };
     
+    //If debug connected need emulate sleep
     if (DBG_Connected())
     {
       
@@ -121,27 +100,16 @@ DC_return_t Tracker_sleep_sec(uint32_t sleep_period)
         
         vTaskDelay(1000);
       }
-    }else{
+    }else{ //Sleep
       
-      while (sleep_period--)
-      {
-        if (DC_taskCtrl.DC_event.flags.event_ACC)
-          break;
-        
-        vTaskDelay(1000);
-      }
-      
-      //      DC_debugOut("%%%Sleep%%%\r\n");
-      //      
-      //      EMU_EnterEM2(true);
-      //      
-      //      DC_debugOut("%%%Wake UP%%%%\r\n");
-      
-      //      USBD_Disconnect();
-      //      vTaskDelay(500);
-      //      USBD_Connect();
-      
-      //USB_Driver_Init(USB_Handler);
+      DC_sleep(sleep_period);
+//      while (sleep_period--)
+//      {
+//        if (DC_taskCtrl.DC_event.flags.event_ACC)
+//          break;
+//        
+//        vTaskDelay(1000);
+//      }
     }
   }
   
@@ -262,18 +230,18 @@ void Tracker_readSensors()
 uint8_t Tracker_IDLE_subTask()
 { 
   
-  WDOG_Feed(); //Watch dog
+  WDOG_Feed(); //Watch dog reset
   
   //If first start
   if (DC_taskCtrl.DC_modeBefore== DC_MODE_IDLE)
   {
     DC_debugOut("***First start***\r\n");     
-    DC_taskCtrl.DC_modeCurrent = DC_MODE_AGPS_UPDATE;//DC_MODE_AGPS_UPDATE;
+    DC_taskCtrl.DC_modeCurrent = DC_MODE_AGPS_UPDATE; //set first task
   }
   
   //If was before event
   if (DC_taskCtrl.DC_modeBefore == DC_MODE_ACC_EVENT)
-  { 
+  {
     
     //Error
     if (DC_taskCtrl.DC_exec.DC_execFlag == DC_EXEC_FLAG_ERROR)
@@ -357,7 +325,7 @@ uint8_t Tracker_IDLE_subTask()
   
   //If was before AGPS mode
   if (DC_taskCtrl.DC_modeBefore == DC_MODE_AGPS_UPDATE)
-  {    
+  {
     
     //Error
     if (DC_taskCtrl.DC_exec.DC_execFlag == DC_EXEC_FLAG_ERROR)
@@ -561,7 +529,7 @@ uint8_t Tracker_goToIDLE(DC_execFlag_t DC_flag, DC_execFunc_t DC_func)
 //AGPS mode
 void Tracker_exec_AGPS_mode()
 {
-  DC_ledStatus_flash(20, 50);
+  DC_ledStatus_flash(3, 500);
   
   DC_taskCtrl.DC_modeBefore = DC_MODE_AGPS_UPDATE;
   
@@ -590,7 +558,7 @@ void Tracker_exec_AGPS_mode()
   }
   
   //Connect to GPRS
-  if (MAPI_GPRS_connect(current_ip) == DC_OK)
+  if (MAPI_GPRS_connect(DC_params.current_ip) == DC_OK)
   {
     DC_debugOut("GPRS connection OK\r\n");      
   }else{
@@ -663,9 +631,9 @@ void Tracker_exec_Collect_mode()
     {
       
       //Get GNSS data
-      if (MAPI_get_GNSS(&globalGNSS_data) == DC_OK)
+      if (MAPI_get_GNSS(&DC_params.GNSS_data) == DC_OK)
       {
-        globalGNSS_data.coordSource = COORD_SOURCE_GNSS; //Set coordinate source
+        DC_params.GNSS_data.coordSource = COORD_SOURCE_GNSS; //Set coordinate source
         DC_debugOut("GNSS getting OK\r\n");
         break;
       }else{
@@ -684,21 +652,21 @@ void Tracker_exec_Collect_mode()
       if (MAPI_getCelloc(&cellLat, &cellLon) == DC_OK)//Get celloc
       {
         //Convertion to HHMMSS
-        globalGNSS_data.lat1 = GNSS_convertTo_HHMMSS(cellLat);
-        globalGNSS_data.lon1 = GNSS_convertTo_HHMMSS(cellLon);
+        DC_params.GNSS_data.lat1 = GNSS_convertTo_HHMMSS(cellLat);
+        DC_params.GNSS_data.lon1 = GNSS_convertTo_HHMMSS(cellLon);
         DC_debugOut("Getting cell loc lat:%0.3f lon:%0.3f\r\n", cellLat, cellLon);
         
-        globalGNSS_data.coordSource = COORD_SOURCE_GNSS; //Set coordinate source
+        DC_params.GNSS_data.coordSource = COORD_SOURCE_GNSS; //Set coordinate source
         
         CL_getDateTime(&date, &time);
-        globalGNSS_data.date = date;
-        globalGNSS_data.time = time;
-        globalGNSS_data.alt = 0;
-        globalGNSS_data.cource = 0;
-        globalGNSS_data.hdop = 0;
-        globalGNSS_data.lock = 1;
-        globalGNSS_data.sats = 0;
-        globalGNSS_data.speed = 0;
+        DC_params.GNSS_data.date = date;
+        DC_params.GNSS_data.time = time;
+        DC_params.GNSS_data.alt = 0;
+        DC_params.GNSS_data.cource = 0;
+        DC_params.GNSS_data.hdop = 0;
+        DC_params.GNSS_data.lock = 1;
+        DC_params.GNSS_data.sats = 0;
+        DC_params.GNSS_data.speed = 0;
         break;
         
       }else{
@@ -715,7 +683,7 @@ void Tracker_exec_Collect_mode()
   
   //Log data
   DC_dataLog.Cell_quality = DC_params.Cell_quality;
-  DC_dataLog.GNSS_data = globalGNSS_data;
+  DC_dataLog.GNSS_data = DC_params.GNSS_data;
   DC_dataLog.power = DC_getPower();
   DC_dataLog.Status = DC_status.statusWord;
   DC_dataLog.Event = DC_taskCtrl.DC_event.eventWord;
@@ -746,7 +714,7 @@ void Tracker_exec_Send_mode()
   }
   
   //Get IMEI
-  if (!MC60_check_IMEI((char*)DC_settings.IMEI))
+  if (!Modem_check_IMEI((char*)DC_settings.IMEI))
   {
     if (MAPI_getIMEI((char*)DC_settings.IMEI) != DC_OK)
     {
@@ -758,7 +726,7 @@ void Tracker_exec_Send_mode()
   }
   
   //Connect to GPRS
-  if (MAPI_GPRS_connect(current_ip) == DC_OK)
+  if (MAPI_GPRS_connect(DC_params.current_ip) == DC_OK)
   {
     DC_debugOut("GPRS connection OK\r\n");      
   }else{
@@ -876,9 +844,9 @@ void Tracker_exec_ACC_event()
     {
       
       //Get GNSS data
-      if (MAPI_get_GNSS(&globalGNSS_data) == DC_OK)
+      if (MAPI_get_GNSS(&DC_params.GNSS_data) == DC_OK)
       {
-        globalGNSS_data.coordSource = COORD_SOURCE_GNSS; //Set coordinate source
+        DC_params.GNSS_data.coordSource = COORD_SOURCE_GNSS; //Set coordinate source
         DC_debugOut("GNSS getting OK\r\n");
         break;
       }else{
@@ -897,21 +865,21 @@ void Tracker_exec_ACC_event()
       if (MAPI_getCelloc(&cellLat, &cellLon) == DC_OK)//Get celloc
       {
         //Convertion to HHMMSS
-        globalGNSS_data.lat1 = GNSS_convertTo_HHMMSS(cellLat);
-        globalGNSS_data.lon1 = GNSS_convertTo_HHMMSS(cellLon);
+        DC_params.GNSS_data.lat1 = GNSS_convertTo_HHMMSS(cellLat);
+        DC_params.GNSS_data.lon1 = GNSS_convertTo_HHMMSS(cellLon);
         DC_debugOut("Getting cell loc lat:%0.3f lon:%0.3f\r\n", cellLat, cellLon);
         
-        globalGNSS_data.coordSource = COORD_SOURCE_GNSS; //Set coordinate source
+        DC_params.GNSS_data.coordSource = COORD_SOURCE_GNSS; //Set coordinate source
         
         CL_getDateTime(&date, &time);
-        globalGNSS_data.date = date;
-        globalGNSS_data.time = time;
-        globalGNSS_data.alt = 0;
-        globalGNSS_data.cource = 0;
-        globalGNSS_data.hdop = 0;
-        globalGNSS_data.lock = 1;
-        globalGNSS_data.sats = 0;
-        globalGNSS_data.speed = 0;
+        DC_params.GNSS_data.date = date;
+        DC_params.GNSS_data.time = time;
+        DC_params.GNSS_data.alt = 0;
+        DC_params.GNSS_data.cource = 0;
+        DC_params.GNSS_data.hdop = 0;
+        DC_params.GNSS_data.lock = 1;
+        DC_params.GNSS_data.sats = 0;
+        DC_params.GNSS_data.speed = 0;
         break;
         
       }else{
@@ -928,14 +896,14 @@ void Tracker_exec_ACC_event()
   
   //Log data
   DC_dataLog.Cell_quality = DC_params.Cell_quality;
-  DC_dataLog.GNSS_data = globalGNSS_data;
+  DC_dataLog.GNSS_data = DC_params.GNSS_data;
   DC_dataLog.power = DC_getPower();
   DC_dataLog.Status = DC_status.statusWord;
   DC_dataLog.Event = DC_taskCtrl.DC_event.eventWord;
   DC_dataLog.Event |= (1 << DC_WIALON_STAT_ACC);
   
   //Get IMEI
-  if (!MC60_check_IMEI((char*)DC_settings.IMEI))
+  if (!Modem_check_IMEI((char*)DC_settings.IMEI))
   {
     if (MAPI_getIMEI((char*)DC_settings.IMEI) != DC_OK)
     {
@@ -947,7 +915,7 @@ void Tracker_exec_ACC_event()
   }
   
   //Connect to GPRS
-  if (MAPI_GPRS_connect(current_ip) == DC_OK)
+  if (MAPI_GPRS_connect(DC_params.current_ip) == DC_OK)
   {
     DC_debugOut("GPRS connection OK\r\n");      
   }else{
@@ -998,18 +966,10 @@ void Tracker_exec_ACC_event()
 //**************************************************************************************************
 //Tracker task
 void vTracker_Task(void *pvParameters)
-{   
-  USB_Driver_Init(USB_Handler);
-  
+{
   MAPI_init(Tracker_con_Queue);
   vTaskSuspend( xHandle_Tracker );
   vTaskDelay(200);
-  
-  //Start sample timer
-  DC_startSampleTimer(1); //Sample timer 1ms
-  DC_startMonitorTimer(1000); //Start monitor timer
-
-  LED_STATUS_ON;
   
   //Set start modes
   DC_taskCtrl.DC_modeCurrent = DC_MODE_IDLE;
@@ -1018,7 +978,7 @@ void vTracker_Task(void *pvParameters)
   while(1)
   {    
       
-    DC_debugOut("Work!\r\n");
+    DC_debugOut("Tracker task work!\r\n");
     
     //*************************************************************************************
     //Events

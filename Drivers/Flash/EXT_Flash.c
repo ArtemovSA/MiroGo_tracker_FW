@@ -221,6 +221,8 @@ void EXT_Flash_writeData(uint32_t address, uint8_t *data, uint16_t count) {
   uint8_t count_full = (uint32_t)(count/EXT_FLASH_IO_SIZE); //Найти количество страниц
   uint32_t buf_addr = address;
   uint16_t count_end;
+
+  
   
   //Записываем целые страницы
   for (int i=0; i<count_full; i++) {
@@ -239,7 +241,7 @@ void EXT_Flash_writeData(uint32_t address, uint8_t *data, uint16_t count) {
     SPI_sendBuffer(addr, 3);
     SPI_sendBuffer(buf_flash, EXT_FLASH_IO_SIZE);
     EXT_FLASH_SPI_CS_SET;
-    _delay_ms(5);
+    _delay_ms(20);
     
     EXT_Flash_waitStatusByte(EXT_FLASH_STATUS_WIP, 0, 200); //Ждем завершения записи
     
@@ -266,7 +268,6 @@ void EXT_Flash_writeData(uint32_t address, uint8_t *data, uint16_t count) {
     SPI_sendBuffer(addr, 3);
     SPI_sendBuffer(buf_flash, count_end);
     EXT_FLASH_SPI_CS_SET;
-    _delay_ms(5);
     
     EXT_Flash_waitStatusByte(EXT_FLASH_STATUS_WIP, 0, 200); //Ждем завершения записи
   }  

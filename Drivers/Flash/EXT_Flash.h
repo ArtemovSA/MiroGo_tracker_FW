@@ -21,16 +21,16 @@
 
 //Параметры
 #define EXT_FLASH_SIZE                  0x1FFFFF        //Размер памяти
-#define EXT_FLASH_IO_SIZE               0x1000          //Буфера работы с памятью
+#define EXT_FLASH_IO_SIZE               64              //Буфера работы с памятью
 #define EXT_FLASH_SECTOR_SIZE           0x1000          //Размер сектора 4Кб
 #define EXT_FLASH_BLOCK_SIZE            0x10000         //Размер блока 64Кб
 
 //Program part
+#define EXT_FLASH_SETTINGS              0x000000 //Настройки системы
 #define EXT_FLASH_PROGRAMM_IMAGE        0x1F0000 //Блок для хранения прошивки
-#define EXT_FLASH_TEMP_SECTOR           0x1E0000 //Сектор для хранения буфера  
+#define EXT_FLASH_TEMP_SECTOR           0x1E1000 //Сектор для хранения буфера
 #define EXT_FLASH_CONTROL_STRUCT        0x1E2000 //Контрольная структура
 #define EXT_FLASH_PARAMS                0x1E3000 //Параметры
-#define EXT_FLASH_SETTINGS              0x1E4000 //Настройки системы
 #define EXT_FLASH_LOG_DATA              0x1E5000 //Лог
 
 #define EXT_FLASH_LOG_DATA_SIZE         3        //Размера лога в блоках

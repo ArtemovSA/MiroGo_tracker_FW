@@ -16,11 +16,25 @@
 #include "semphr.h"
 #include "timers.h"
 
+//**********************************Work settings***************************************************
+
+//Debug out
+#define EN_DBG_IO_OUT           //Debug out in debug termunal
+#define EN_DBG_UART_OUT         //Debug out in UART
+#define EN_DBG_USB_OUT          //Debug out in USB
+//#define EN_BLUETOOTH          //Bluetooth enable
+#define EN_RING_IRQ             //RING interrup enable
+#define EN_ACC                  //Enble Acelerometr
+
+//**********************************Constatnts******************************************************
+
+#define DC_CRITICAL_VOLTAGE             2.1 //DCDC critical voltage
+
 //**********************************Default params**************************************************
 
 #define DC_SETTINGS_MAGIC_CODE          0x03
 #define DC_PARAMS_MAGIC_CODE            0x05
-#define DC_VALID_MAGIC_CODE             0x17
+#define DC_LOG_VALID_MAGIC_CODE         0x17
 
 #define DC_SET_DATA_SEND_PERIOD         300
 #define DC_SET_DATA_COLLECT_PERIOD      120
@@ -174,10 +188,6 @@ typedef struct{
 
 //**********************************Device mode and device status***********************************
 
-//IRQ enable
-#define SW_RING_IRQ     1
-#define SW_ACC_IRQ      1
-
 //Device status
 typedef union
 {
@@ -295,11 +305,10 @@ typedef struct {
 
 //Data log
 typedef struct{
-  uint8_t valid_key;                            //valid data key
-  
+  uint8_t valid_key;                            //valid data key (This cell active)
   float MCU_temper;                             //Internal temperature
   float BAT_voltage;                            //Battery voltage
-  uint8_t countTempSensors;                     //Count temp sensors        
+  uint8_t countTempSensors;                     //Count temp sensors
   GNSS_data_t GNSS_data;                        //GNSS data
   uint8_t Cell_quality;                         //Cell quality
   double power;                                 //Power
@@ -338,19 +347,29 @@ typedef struct{
 
 //Parametrs
 typedef struct {
-  uint8_t       magic_key;
+  uint8_t       magic_key;              //Magic key value
   
+  //Others params
   time_t        UTC_time;               //Time in UTC
+  uint8_t       countTempSensors;       //Count temperature sensors
+  //Power params
   uint64_t      power;                  //Power consumtion
   float         MCU_temper;             //Internal temperature
   float         BAT_voltage;            //Battery voltage
+  //Cell params
   uint8_t       Cell_quality;           //Cell quality
-  uint8_t       countTempSensors;       //Count temperature sensors
+  float         Cell_lat;               //Cell lat
+  float         Cell_lon;               //Cell lon
+  //GNSS coordinates
+   GNSS_data_t  GNSS_data;              //Current GNSS_data
+  //Log params
   uint32_t      dataLog_len;            //Data log Len
   uint32_t      debugLog_len;           //Debug log Len
   uint32_t      debugLog_pos;           //Debug log pos
-  uint8_t       current_data_IP;        //Current data IP
-  uint8_t       current_service_IP;     //Current service IP
+  //IP params
+  char          current_ip[16];         //Current ip
+  uint8_t       current_data_IP;        //Current data IP in ID
+  uint8_t       current_service_IP;     //Current service IP in ID
 }DC_params_t;
 
 extern volatile DC_debugLog_t DC_debugLog; //Debug log

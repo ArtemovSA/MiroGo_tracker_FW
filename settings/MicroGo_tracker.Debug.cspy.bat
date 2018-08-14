@@ -25,7 +25,7 @@ if not "%~1" == "" goto debugFile
 
 @echo on 
 
-"C:\Program Files (x86)\IAR Systems\Embedded Workbench 7.5\common\bin\cspybat" -f "D:\JOB\ARM\EFM32\IAR workspace\MicroGo_tracker_v1.1\settings\MicroGo_tracker.Debug.general.xcl" --backend -f "D:\JOB\ARM\EFM32\IAR workspace\MicroGo_tracker_v1.1\settings\MicroGo_tracker.Debug.driver.xcl" 
+"C:\Program Files (x86)\IAR Systems\Embedded Workbench 7.5\common\bin\cspybat" -f "D:\JOB\ARM\EFM32\IAR workspace\MiroGo_tracker_FW\settings\MicroGo_tracker.Debug.general.xcl" --backend -f "D:\JOB\ARM\EFM32\IAR workspace\MiroGo_tracker_FW\settings\MicroGo_tracker.Debug.driver.xcl" 
 
 @echo off 
 goto end 
@@ -34,7 +34,7 @@ goto end
 
 @echo on 
 
-"C:\Program Files (x86)\IAR Systems\Embedded Workbench 7.5\common\bin\cspybat" -f "D:\JOB\ARM\EFM32\IAR workspace\MicroGo_tracker_v1.1\settings\MicroGo_tracker.Debug.general.xcl" "--debug_file=%~1" --backend -f "D:\JOB\ARM\EFM32\IAR workspace\MicroGo_tracker_v1.1\settings\MicroGo_tracker.Debug.driver.xcl" 
+"C:\Program Files (x86)\IAR Systems\Embedded Workbench 7.5\common\bin\cspybat" -f "D:\JOB\ARM\EFM32\IAR workspace\MiroGo_tracker_FW\settings\MicroGo_tracker.Debug.general.xcl" "--debug_file=%~1" --backend -f "D:\JOB\ARM\EFM32\IAR workspace\MiroGo_tracker_FW\settings\MicroGo_tracker.Debug.driver.xcl" 
 
 @echo off 
 :end

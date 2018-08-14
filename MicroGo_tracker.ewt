@@ -2351,12 +2351,12 @@
       <file>
         <name>$PROJ_DIR$\Drivers\Flash\EXT_Flash.c</name>
       </file>
-      <file>
-        <name>$PROJ_DIR$\Drivers\Flash\EXT_Flash.h</name>
-      </file>
     </group>
     <group>
       <name>I2C</name>
+      <file>
+        <name>$PROJ_DIR$\Drivers\Flash\EXT_Flash.h</name>
+      </file>
       <file>
         <name>$PROJ_DIR$\Drivers\I2C\I2C.c</name>
       </file>
@@ -2512,6 +2512,12 @@
       </file>
     </group>
     <group>
+      <name>DeviceDefs</name>
+      <file>
+        <name>$PROJ_DIR$\Libs\deviceDefs\deviceDefs.h</name>
+      </file>
+    </group>
+    <group>
       <name>GNSS</name>
       <file>
         <name>$PROJ_DIR$\Libs\GNSS\GNSS.c</name>
@@ -2521,12 +2527,12 @@
       </file>
     </group>
     <group>
-      <name>MC60_lib</name>
+      <name>Modem_lib</name>
       <file>
-        <name>$PROJ_DIR$\Libs\MC60_lib\MC60_lib.c</name>
+        <name>$PROJ_DIR$\Libs\Modem_lib\Modem.c</name>
       </file>
       <file>
-        <name>$PROJ_DIR$\Libs\MC60_lib\MC60_lib.h</name>
+        <name>$PROJ_DIR$\Libs\Modem_lib\Modem.h</name>
       </file>
     </group>
     <group>

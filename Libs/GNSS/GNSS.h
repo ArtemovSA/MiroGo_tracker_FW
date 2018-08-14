@@ -26,6 +26,7 @@ typedef struct{
   uint8_t coordSource;          //Source data
 } GNSS_data_t;
 
+
 uint8_t GNSS_parce_RMC(char *GNSS_str, GNSS_data_t *GNSS_data); //Parce GNSS_RMC data
 uint8_t GNSS_parce_GGA(char *GNSS_str, GNSS_data_t *GNSS_data); //Parce GNSS_GGA data
 float GNSS_convertTo_HHMMSS(float data); //Convert to DDMMSS

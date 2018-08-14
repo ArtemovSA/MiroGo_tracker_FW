@@ -343,7 +343,6 @@
           <state>$PROJ_DIR$\Drivers\USB_VCP\usb\src</state>
           <state>$PROJ_DIR$\Drivers\USB_VCP</state>
           <state>$PROJ_DIR$\Tasks\Modem_gate_task</state>
-          <state>$PROJ_DIR$\Libs\MC60_lib</state>
           <state>$PROJ_DIR$\Drivers\UART</state>
           <state>$PROJ_DIR$\Tasks\Main_task</state>
           <state>$PROJ_DIR$\Tasks\Monitor_task</state>
@@ -355,6 +354,8 @@
           <state>$PROJ_DIR$\Tasks\Monitor_task</state>
           <state>$PROJ_DIR$\API\Sleep</state>
           <state>$PROJ_DIR$\API\Modem</state>
+          <state>$PROJ_DIR$\Libs\deviceDefs</state>
+          <state>$PROJ_DIR$\Libs\Modem_lib</state>
         </option>
         <option>
           <name>CCStdIncCheck</name>
@@ -765,7 +766,7 @@
         </option>
         <option>
           <name>IlinkIcfFile</name>
-          <state>D:\JOB\ARM\EFM32\IAR workspace\MicroGo_tracker_v1.1\EFM32LG330F128.icf</state>
+          <state>D:\JOB\ARM\EFM32\IAR workspace\MiroGo_tracker_FW\EFM32LG330F128.icf</state>
         </option>
         <option>
           <name>IlinkIcfFileSlave</name>
@@ -2005,12 +2006,12 @@
       <file>
         <name>$PROJ_DIR$\Drivers\Flash\EXT_Flash.c</name>
       </file>
-      <file>
-        <name>$PROJ_DIR$\Drivers\Flash\EXT_Flash.h</name>
-      </file>
     </group>
     <group>
       <name>I2C</name>
+      <file>
+        <name>$PROJ_DIR$\Drivers\Flash\EXT_Flash.h</name>
+      </file>
       <file>
         <name>$PROJ_DIR$\Drivers\I2C\I2C.c</name>
       </file>
@@ -2166,6 +2167,12 @@
       </file>
     </group>
     <group>
+      <name>DeviceDefs</name>
+      <file>
+        <name>$PROJ_DIR$\Libs\deviceDefs\deviceDefs.h</name>
+      </file>
+    </group>
+    <group>
       <name>GNSS</name>
       <file>
         <name>$PROJ_DIR$\Libs\GNSS\GNSS.c</name>
@@ -2175,12 +2182,12 @@
       </file>
     </group>
     <group>
-      <name>MC60_lib</name>
+      <name>Modem_lib</name>
       <file>
-        <name>$PROJ_DIR$\Libs\MC60_lib\MC60_lib.c</name>
+        <name>$PROJ_DIR$\Libs\Modem_lib\Modem.c</name>
       </file>
       <file>
-        <name>$PROJ_DIR$\Libs\MC60_lib\MC60_lib.h</name>
+        <name>$PROJ_DIR$\Libs\Modem_lib\Modem.h</name>
       </file>
     </group>
     <group>
